@@ -23,7 +23,7 @@ def main():
     parser.add_argument("--image_size", type=int, help = "Input image size")
     parser.add_argument("--roi_size", type=int, default = 64, help = "Input ROI size for DataLoader")
     parser.add_argument("--input", help = "Input sequence, space separated", nargs='+') #type=list
-    parser.add_argument("--output", help = "Output sequence ")
+    parser.add_argument("--output", help = "Output sequence ") # debe ser igual al de input, input, output y labels que sean string
     parser.add_argument("--channels", type=int, default=1, help="number of image channels")
     parser.add_argument("--dataset_name", type=str, default="dce-mri", help="Dataset name")
     parser.add_argument("--quality", default = None, help = "Quality of images (duke data only)")
@@ -33,8 +33,13 @@ def main():
 
     parser.add_argument("--normalization", help="Type of normalization", default = 'ti_norm', choices=["z_score", "min_max", "ti_norm", "none"])
     
+    parser.add_argument("--input_sequence", type=str,help="Input sequence")
+    parser.add_argument("--output_sequence", type=str,  help="Output sequence")
+    parser.add_argument("--output_labels", type=str,  help="Output labels")
+    parser.add_argument("--data_path", type=str,  help="Data path")   
+
     #### Training params
-    parser.add_argument("--model", help="Model to use.", default = None, choices=["Pix2Pix", "UNet", "PAN", "ResViT", "TSGAN"])
+    parser.add_argument("--model", help="Model to use.", default = None, choices=["Pix2Pix", "UNet", "Mask_Pix2Pix", "Mask_UNet", "Mask_R_Pix2Pix", "Mask_R_UNet"])
     parser.add_argument("--restart_from", type=int, default=0, help="Restart training from epoch")
     parser.add_argument("--num_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--batch_size", type=int, default=10, help="size of the batches")
@@ -83,23 +88,19 @@ if __name__ == "__main__":
     
     args = "--no_notifications \
             --gpus 0 \
-            --dataset_name duke \
-            --quality 1T \
-            --input pre post_1 --output post_3 \
-            --exp_name D1T/N0/P2P/ \
-            --data_dir Data/Duke/Duke_tiff/ \
+            --exp_name Prue_UNet \
+            --dataset_name BreaDM \
+            --input_sequence VIBRANT_IMG \
+            --output_sequence VIBRANT+C3_IMG \
+            --output_labels VIBRANT+C3_LABEL \
+            --data_path /home/estudiante1/MRI_pj/fram_template/BreaDM/ \
             --image_size 256 --channels 1 \
-            --batch_size 20 \
-            --num_epochs 201 \
-            --num_workers 10 \
-            --sample_interval 25 --checkpoint_interval 100 \
-            --lambda_pixel 1.0 \
-            --model Pix2Pix --use_augmentations \
-            --normalization ti_norm \
-            --reduced_training \
-            --enhancement_maps \
-            --exps_to_compare Results/D1T/E3/P2P_ Results/D1T/E3/UN_" # --enhancement_maps \ Pix2Pix
-    
+            --batch_size 5 \
+            --normalization min_max \
+            --num_workers 4 \
+            --model Mask_R_UNet \
+            --num_epochs 100"
+
     for arg in args.split(" "):
         if arg: param(arg)
     """ 

@@ -418,7 +418,7 @@ def save_images (list_images, output_dir, diffmap = None, image_ax = [0,1,2,4,5,
         if diffmap_ax == None: diffmap_ax = -1
 
         for i, dm in zip(diffmap_ax, diffmap):
-            sns.heatmap(np.squeeze(dm), cmap = "hot", ax=axes[i], vmin=0, vmax=5) #, vmin=0, vmax=1
+            sns.heatmap(np.squeeze(dm), cmap = "hot", ax=axes[i], vmin=0, vmax=1) #, vmin=0, vmax=5
             axes[i].set_axis_off(); axes[i].set_title("Avg diff: {0:0.3f}".format(np.mean(np.squeeze(dm))))
 
     #plt.margins(0)
@@ -909,23 +909,29 @@ def sample_images(args, dataloader, generator, epoch, difference = True, output_
             img = dataloader.test_generator[int(l)]
             real_in  = Variable(img["in" ].type(Tensor)); real_in = real_in[None, :]
             real_out = Variable(img["out"].type(Tensor)); real_out = real_out[None, :]
-            roi_in  = Variable(img["roi_in" ].type(Tensor)); roi_in = roi_in[None, :]
-            roi_out = Variable(img["roi_out"].type(Tensor)); roi_out = roi_out[None, :]
+            real_lab = Variable(img["label"].type(Tensor)); real_lab = real_lab[None, :]
+            # roi_in  = Variable(img["roi_in" ].type(Tensor)); roi_in = roi_in[None, :]
+            # roi_out = Variable(img["roi_out"].type(Tensor)); roi_out = roi_out[None, :]
 
-            fake_out = generator(real_in)
-            roi_fake = extract_roi_from_points(fake_out.cpu().detach().numpy(), img["pt_roi_out"] )
+            # # GAN loss 
+            if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet":
+                fake_out = generator(real_in)
+            else: 
+                fake_out = generator(real_in, real_lab)
+            # roi_fake = extract_roi_from_points(fake_out.cpu().detach().numpy(), img["pt_roi_out"] )
 
             if difference:
                 diffmap = abs(real_out.data - fake_out.data) 
-                diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
-                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), \
-                              roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
-                diffmaps = [diffmap.cpu().numpy(), diffroi]
+                # diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
+                # img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), \
+                #               roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
+                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), real_lab.data.cpu().numpy()]
+                diffmaps = [diffmap.cpu().numpy()]
 
                 if logger: 
                     ## plot all images
-                    im = save_images(img_sample, output_dir = output_dir + "%s.png" % (k), \
-                            diffmap = diffmaps, diffmap_ax = [3, 7], plot_shape = (2,4), figsize=(14,6), return_image = True)
+                    im = save_images(img_sample, output_dir = output_dir + "%s.png" % (k), image_ax = [0,1,2,3], \
+                            diffmap = diffmaps, diffmap_ax = [4], plot_shape = (1,5), figsize=(20,4), return_image = True)
                     list_im.append(im)
                     
                     # tic = time_intensity_training(roi_in, roi_out, roi_fake)
@@ -936,11 +942,11 @@ def sample_images(args, dataloader, generator, epoch, difference = True, output_
                             diffmap = diffmaps, diffmap_ax = [3, 7], plot_shape = (2,4), figsize=(14,6))
                 
                 ##---- Metrics -----
-                m_, s_, p_ = pixel_metrics((real_out.data.cpu().numpy()+1)/2, (fake_out.data.cpu().numpy()+1)/2)
+                m_, s_, p_ = pixel_metrics(real_out.data.cpu().numpy(), fake_out.data.cpu().numpy())
                 m_fi.append(m_), s_fi.append(s_), p_fi.append(p_)
 
-                m_, s_, p_ = pixel_metrics((roi_out.data.cpu().numpy()+1)/2, (roi_fake[np.newaxis,:,:,:]+1)/2)
-                m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
+                # m_, s_, p_ = pixel_metrics((roi_out.data.cpu().numpy()+1)/2, (roi_fake[np.newaxis,:,:,:]+1)/2)
+                # m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
 
             else:
                 img_sample = torch.cat((real_in.data, real_out.data, fake_out.data), -1)
@@ -953,9 +959,9 @@ def sample_images(args, dataloader, generator, epoch, difference = True, output_
         if write_log == True: 
             #"""
             stats_fi = "{0:.4f}, {1:.4f}, {2:.4f}".format(np.mean(m_fi),np.mean(s_fi),np.mean(p_fi))
-            stats_ro = "{0:.4f}, {1:.4f}, {2:.4f}".format(np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
-            dict = {args.exp_name + "-avg_fim" : stats_fi,
-                    args.exp_name + "-avg_roi" : stats_ro}
+            # stats_ro = "{0:.4f}, {1:.4f}, {2:.4f}".format(np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
+            dict = {args.exp_name + "-avg_fim" : stats_fi}
+                    # args.exp_name + "-avg_roi" : stats_ro}
             w = csv.writer(open("Results/stats.csv", "a"))
             for key, val in dict.items(): w.writerow([key, val]) #"""
             print ("\n [!] -> Results saved in: Results/stats.csv \n")
