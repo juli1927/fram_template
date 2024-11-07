@@ -75,8 +75,6 @@ class Generator_Mask_R_UNet(nn.Module):
         self.rep6 = UNetDown(512, 512, dropout=0.5)
         self.rep7 = UNetDown(512, 512, dropout=0.5)
         self.rep8 = UNetDown(512, 512, dropout=0.5, normalize=False)
-        self.mix = nn.Sequential(nn.Conv2d(1024,512, kernel_size=(3,3), padding=1), nn.ReLU(), nn.BatchNorm2d(512))
-        
         # d (decoder)
         self.up1 = UNetUp(512 , 512, dropout=0.5)
         self.up2 = UNetUp(1024+512, 512, dropout=0.5)
@@ -114,7 +112,7 @@ class Generator_Mask_R_UNet(nn.Module):
         r6 = self.rep6(r5)
         r7 = self.rep7(r6)
         r8 = self.rep8(r7)
-        mult  = self.mix(torch.cat([d8, r8],dim=1))
+        mult  = d8 * r8
         u1 = self.up1(mult, torch.cat([d7, r7],dim=1))
         u2 = self.up2(u1, torch.cat([d6, r6],dim=1))
         u3 = self.up3(u2, torch.cat([d5, r5],dim=1))
