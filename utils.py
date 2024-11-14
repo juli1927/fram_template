@@ -915,7 +915,7 @@ def sample_images(args, dataloader, generator, epoch, difference = True, output_
             # roi_out = Variable(img["roi_out"].type(Tensor)); roi_out = roi_out[None, :]
 
             # # GAN loss 
-            if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet":
+            if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet" and args.model != "Mask_R_Pix2Pix_bloque" and args.model != "Mask_R_UNet_bloque":
                 fake_out = generator(real_in)
             else: 
                 fake_out = generator(real_in, real_lab)

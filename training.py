@@ -11,6 +11,7 @@ from dataloader import *
 from Models.Pix2Pix import GeneratorUNet, PatchGAN_Discriminator, weights_init_normal
 from Models.Mask_Pix2Pix import Generator_Mask_UNet, Mask_PatchGAN_Discriminator
 from Models.Mask_R_Pix2Pix import Generator_Mask_R_UNet, Mask_R_PatchGAN_Discriminator
+from Models.Mask_R_Pix2Pix_bloque import Generator_Mask_R_UNet_bloque, Mask_R_PatchGAN_Discriminator_bloque
 import torchvision.transforms.functional as TF
 
 def run_model(args): 
@@ -85,6 +86,27 @@ def run_model(args):
         # Initialize generator and discriminator
         generator = Generator_Mask_R_UNet(n_channels = args.channels)
         discriminator = Mask_R_PatchGAN_Discriminator(n_channels = args.channels)
+        # Calculate output of image discriminator (PatchGAN)
+        patch = (1, args.image_size // 2 ** 4, args.image_size // 2 ** 4)
+
+        # Loss functions
+        GAN_loss = torch.nn.MSELoss()
+        cuda_models  = [generator, discriminator]
+        cuda_losses  = [GAN_loss]
+
+    elif args.model == "Mask_R_UNet_bloque": 
+        # Initialize generator and discriminator
+        generator = Generator_Mask_R_UNet_bloque(n_channels = args.channels)
+        
+        discriminator = None
+        # Loss functions
+        cuda_models  = [generator]
+        cuda_losses = []
+    
+    elif args.model == "Mask_R_Pix2Pix_bloque":
+        # Initialize generator and discriminator
+        generator = Generator_Mask_R_UNet_bloque(n_channels = args.channels)
+        discriminator = Mask_R_PatchGAN_Discriminator_bloque(n_channels = args.channels)
         # Calculate output of image discriminator (PatchGAN)
         patch = (1, args.image_size // 2 ** 4, args.image_size // 2 ** 4)
 
@@ -256,7 +278,7 @@ def run_model(args):
             generator.train()
 
             # # GAN loss 
-            if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet":
+            if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet" and args.model != "Mask_R_Pix2Pix_bloque" and args.model != "Mask_R_UNet_bloque":
                 fake_out = generator(real_in)
             else: 
                 fake_out = generator(real_in, real_lab)
@@ -266,7 +288,7 @@ def run_model(args):
                 valid = Variable(Tensor(np.ones ((real_in.size(0), *patch))), requires_grad=False)
                 fake  = Variable(Tensor(np.zeros((real_in.size(0), *patch))), requires_grad=False)
 
-                if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet":
+                if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet" and args.model != "Mask_R_Pix2Pix_bloque" and args.model != "Mask_R_UNet_bloque":
                     fake_pred = discriminator(fake_out, real_in)
                 else: 
                     fake_pred = discriminator(fake_out, torch.cat([real_in, real_lab], dim=1))

@@ -39,7 +39,7 @@ def main():
     parser.add_argument("--data_path", type=str,  help="Data path")   
 
     #### Training params
-    parser.add_argument("--model", help="Model to use.", default = None, choices=["Pix2Pix", "UNet", "Mask_Pix2Pix", "Mask_UNet", "Mask_R_Pix2Pix", "Mask_R_UNet"])
+    parser.add_argument("--model", help="Model to use.", default = None, choices=["Pix2Pix", "UNet", "Mask_Pix2Pix", "Mask_UNet", "Mask_R_Pix2Pix", "Mask_R_UNet", "Mask_R_Pix2Pix_bloque", "Mask_R_UNet_bloque"])
     parser.add_argument("--restart_from", type=int, default=0, help="Restart training from epoch")
     parser.add_argument("--num_epochs", type=int, default=200, help="number of epochs of training")
     parser.add_argument("--batch_size", type=int, default=10, help="size of the batches")
