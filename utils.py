@@ -674,49 +674,50 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
                 img = dataloader.test_generator[int(l)]
                 real_in  = Variable(img["in" ].type(Tensor)); real_in = real_in[None, :]
                 real_out = Variable(img["out"].type(Tensor)); real_out = real_out[None, :]
+                #label, no hay roi
                 roi_in  = Variable(img["roi_in" ].type(Tensor)); roi_in = roi_in[None, :]
                 roi_out = Variable(img["roi_out"].type(Tensor)); roi_out = roi_out[None, :]
 
                 fake_out = generator(real_in)
                 roi_fake = extract_roi_from_points(fake_out.cpu().detach().numpy(), img["pt_roi_out"] )
                 
-                real_ca = real_out - real_in #real_in - real_out #
-                fake_ca = fake_out - real_in #real_in - fake_out #
-                ce_fim = ce_m(fake_ca, real_ca); ces_fim.append(ce_fim.item())
+                # real_ca = real_out - real_in #real_in - real_out #
+                # fake_ca = fake_out - real_in #real_in - fake_out #
+                # ce_fim = ce_m(fake_ca, real_ca); ces_fim.append(ce_fim.item())
                 
-                roi_ca = roi_out - roi_in
-                fro_ca = torch.tensor(roi_fake, device = roi_in.device) - roi_in
-                ce_roi = ce_m(fro_ca, roi_ca); ces_fim.append(ce_roi.item())
+                # roi_ca = roi_out - roi_in
+                # fro_ca = torch.tensor(roi_fake, device = roi_in.device) - roi_in
+                # ce_roi = ce_m(fro_ca, roi_ca); ces_fim.append(ce_roi.item())
 
-                if difference:
-                    diffmap = abs(real_out.data - fake_out.data) 
-                    diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
-                    img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), \
-                                roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
-                    diffmaps = [diffmap.cpu().numpy(), diffroi]
-                    
-                    ##---- Metrics -----##
-                    ##--- FIM ---##
-                    m_, s_, p_ = pixel_metrics(real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), masked=masked)
-                    m_fi.append(m_), s_fi.append(s_), p_fi.append(p_)
+                 
+                diffmap = abs(real_out.data - fake_out.data) 
+                diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
+                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), \
+                            roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
+                diffmaps = [diffmap.cpu().numpy(), diffroi]
+                
+                ##---- Metrics -----##
+                ##--- FIM ---##
+                m_, s_, p_ = pixel_metrics(real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), masked=masked)
+                m_fi.append(m_), s_fi.append(s_), p_fi.append(p_)
 
-                    ##--- ROI ---##
-                    m_, s_, p_ = pixel_metrics(roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:])
-                    m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
+                ##--- ROI ---##
+                m_, s_, p_ = pixel_metrics(roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:])
+                m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
 
-                    if image_level:
-                        roi_fake = torch.from_numpy(roi_fake[np.newaxis,:,:,:])
-                        if args.cuda: roi_fake = roi_fake.cuda()
+                if image_level:
+                    roi_fake = torch.from_numpy(roi_fake[np.newaxis,:,:,:])
+                    if args.cuda: roi_fake = roi_fake.cuda()
 
-                        pdif_fim = image_lpips(real_out, fake_out, scaler = scaler, lpips_ = lpips_)
-                        pdif_roi = image_lpips(roi_out, roi_fake, scaler = scaler, lpips_ = lpips_)
-                        pdifs_fim.append(pdif_fim)
-                        pdifs_roi.append(pdif_roi)
-                    
+                    pdif_fim = image_lpips(real_out, fake_out, scaler = scaler, lpips_ = lpips_)
+                    pdif_roi = image_lpips(roi_out, roi_fake, scaler = scaler, lpips_ = lpips_)
+                    pdifs_fim.append(pdif_fim)
+                    pdifs_roi.append(pdif_roi)
+                
 
-                    save_images(img_sample, output_dir = output_dir + "imgs/%s.png" % (k), \
-                                diffmap = diffmaps, diffmap_ax = [3, 7], plot_shape = (2,4), figsize=(14,6))
-                    names.append(img["ids"])
+                save_images(img_sample, output_dir = output_dir + "imgs/%s.png" % (k), \
+                            diffmap = diffmaps,image_ax = [0,1,2,3,5,6,7,8], diffmap_ax = [4, 9], plot_shape = (2,5), figsize=(15,6))
+                names.append(img["ids"])
             except Exception as e:
                 print (e)
                 continue

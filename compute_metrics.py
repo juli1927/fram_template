@@ -107,17 +107,17 @@ def run_validation(args):
                              norm=args.normalization)
     
     # Initialize data loader
-    early_late = Loader (input_sequence = args.output, output_sequence = args.input[1], data_path = args.data_dir, quality = args.quality,
-                            batch_size = args.batch_size, 
-                            img_res=(args.image_size, args.image_size), roi_size = (args.roi_size,args.roi_size), 
-                            n_channels = args.channels,
-                            train_transforms = transforms_, val_transforms = transforms_, roi_transforms = roi_transforms_, 
-                            dataset_name = args.dataset_name, workers=args.num_workers,
-                            norm=args.normalization)
+    # early_late = Loader (input_sequence = args.output, output_sequence = args.input[1], data_path = args.data_dir, quality = args.quality,
+    #                         batch_size = args.batch_size, 
+    #                         img_res=(args.image_size, args.image_size), roi_size = (args.roi_size,args.roi_size), 
+    #                         n_channels = args.channels,
+    #                         train_transforms = transforms_, val_transforms = transforms_, roi_transforms = roi_transforms_, 
+    #                         dataset_name = args.dataset_name, workers=args.num_workers,
+    #                         norm=args.normalization)
     
     # Initialize email notifier 
     prev_time = None
-    notifier = setup_notifier(mode=args.notification_mode, send_notifications=not args.no_notifications)
+    # notifier = setup_notifier(mode=args.notification_mode, send_notifications=not args.no_notifications)
     
     # In case of validation option. Otherwise, move to train
     if args.pixel_metrics: 
@@ -133,7 +133,7 @@ def run_validation(args):
                "     - Normalization: {0} \n".format(args.normalization) + \
                "     - Exp name: {0} \n".format(args.exp_name)
         
-        notify(notifier, args.exp_name, subj, body, prev_time)
+        # notify(notifier, args.exp_name, subj, body, prev_time)
         prev_time = time.time()
 
         generate_images_with_stats( args, pre_early, generator, args.epoch, \
@@ -144,7 +144,7 @@ def run_validation(args):
         print ("\n" + Fore.GREEN + "[✓] -> Done!" + Fore.RESET + "\n\n")
         if not args.time_intensities and not args.random_patches_metrics: 
             subj = "✅   Pixel metrics Completed! \n"
-            notify(notifier, args.exp_name, subj, body, prev_time)
+            # notify(notifier, args.exp_name, subj, body, prev_time)
             exit()
     
     if args.time_intensities: #args.ce_metrics: 
@@ -326,21 +326,6 @@ if __name__ == "__main__":
     #
     """
     param = sys.argv.append
-    
-    # args = "--epoch 200 \
-    #         --sample_size -1 \
-    #         --dataset_name duke \
-    #         --input pre post_1 --output post_3 --quality 1T \
-    #         --exp_name D1T/E1/P2P_ \
-    #         --data_dir Data/Duke/Duke_tiff/ \
-    #         --image_size 256 --channels 1 \
-    #         --num_workers 8 \
-    #         --model Pix2Pix --normalization referenced \
-    #         --random_patches_metrics --random_roi_size 8 \
-    #         --random_points_patches Results/D1T/points_patches/points_8x8.csv" # --time_intensities --pixel_metrics 
-    #         # --random_patches_points \
-    #         # --random_roi_size 8 --random_patch_seed 0 --random_patches_per_image 3
-    
 
     args = "--no_notifications \
             --gpus 0 \
@@ -348,12 +333,13 @@ if __name__ == "__main__":
             --sample_size -1 \
             --dataset_name duke \
             --input pre post_1 --output post_3 --quality 1T \
-            --exp_name D1T/E4/DP2P_BC/ \
+            --result_dir Exp_base_/ \
+            --exp_name Pix_exp_3/ \
             --data_dir Data/Duke/Duke_tiff/ \
             --image_size 256 --channels 1 \
             --num_workers 8 \
             --normalization ti_norm \
-            --model DualPix2Pix --mask_metrics" #pixel_metrics time_intensities random_patches_metrics mask_metrics
+            --model Pix2Pix --mask_metrics" #pixel_metrics time_intensities random_patches_metrics mask_metrics
             # --random_roi_size 10 --random_patch_seed 0 --random_patches_per_image 3 \
             # --random_patches_metrics --random_points_patches Results/D1T/points_patches/meta_chkpt_1T.csv  \
     
