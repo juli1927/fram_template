@@ -230,7 +230,7 @@ def main():
 
 if __name__ == "__main__":
     #
-    #"""
+    """
     param = sys.argv.append
 
     args = "--no_notifications \
@@ -252,6 +252,6 @@ if __name__ == "__main__":
     
     for arg in args.split(" "): 
         if arg: param(arg)
-    #"""
+    """
     main()
 
