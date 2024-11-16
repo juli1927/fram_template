@@ -672,14 +672,22 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
             
             try:
                 img = dataloader.test_generator[int(l)]
-                real_in  = Variable(img["in" ].type(Tensor)); real_in = real_in[None, :]
-                real_out = Variable(img["out"].type(Tensor)); real_out = real_out[None, :]
-                #label, no hay roi
-                roi_in  = Variable(img["roi_in" ].type(Tensor)); roi_in = roi_in[None, :]
-                roi_out = Variable(img["roi_out"].type(Tensor)); roi_out = roi_out[None, :]
 
-                fake_out = generator(real_in)
-                roi_fake = extract_roi_from_points(fake_out.cpu().detach().numpy(), img["pt_roi_out"] )
+                real_in  = Variable(img["in" ].type(Tensor))  ; real_in  = real_in [None, :]
+                real_out = Variable(img["out"].type(Tensor))  ; real_out = real_out[None, :]
+                real_lab = Variable(img["label"].type(Tensor)); real_lab = real_lab[None, :]
+
+                if args.model != "Mask_Pix2Pix" and args.model != "Mask_UNet" and \
+                   args.model != "Mask_R_Pix2Pix" and args.model != "Mask_R_UNet" and \
+                   args.model != "Mask_R_Pix2Pix_bloque" and args.model != "Mask_R_UNet_bloque":
+                    fake_out = generator(real_in)
+                else: 
+                    fake_out = generator(real_in, real_lab)
+                
+                ###-----------
+                ### Extraccion de los ROI
+                ###-----------
+                # roi_fake = extract_roi_from_points(fake_out.cpu().detach().numpy(), img["pt_roi_out"] )
                 
                 # real_ca = real_out - real_in #real_in - real_out #
                 # fake_ca = fake_out - real_in #real_in - fake_out #
@@ -688,13 +696,12 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
                 # roi_ca = roi_out - roi_in
                 # fro_ca = torch.tensor(roi_fake, device = roi_in.device) - roi_in
                 # ce_roi = ce_m(fro_ca, roi_ca); ces_fim.append(ce_roi.item())
-
                  
                 diffmap = abs(real_out.data - fake_out.data) 
-                diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
-                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), \
-                            roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
-                diffmaps = [diffmap.cpu().numpy(), diffroi]
+                # diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
+                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), real_lab.data.cpu().numpy()] #, \
+                              #roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
+                diffmaps = [diffmap.cpu().numpy()] #, diffroi]
                 
                 ##---- Metrics -----##
                 ##--- FIM ---##
@@ -702,21 +709,22 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
                 m_fi.append(m_), s_fi.append(s_), p_fi.append(p_)
 
                 ##--- ROI ---##
-                m_, s_, p_ = pixel_metrics(roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:])
-                m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
+                # m_, s_, p_ = pixel_metrics(roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:])
+                # m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
 
                 if image_level:
-                    roi_fake = torch.from_numpy(roi_fake[np.newaxis,:,:,:])
-                    if args.cuda: roi_fake = roi_fake.cuda()
+                    # roi_fake = torch.from_numpy(roi_fake[np.newaxis,:,:,:])
+                    # if args.cuda: roi_fake = roi_fake.cuda()
 
                     pdif_fim = image_lpips(real_out, fake_out, scaler = scaler, lpips_ = lpips_)
-                    pdif_roi = image_lpips(roi_out, roi_fake, scaler = scaler, lpips_ = lpips_)
+                    # pdif_roi = image_lpips(roi_out, roi_fake, scaler = scaler, lpips_ = lpips_)
                     pdifs_fim.append(pdif_fim)
-                    pdifs_roi.append(pdif_roi)
+                    # pdifs_roi.append(pdif_roi)
                 
-
                 save_images(img_sample, output_dir = output_dir + "imgs/%s.png" % (k), \
-                            diffmap = diffmaps,image_ax = [0,1,2,3,5,6,7,8], diffmap_ax = [4, 9], plot_shape = (2,5), figsize=(15,6))
+                            diffmap = diffmaps,image_ax = [0,1,2,3], diffmap_ax = [4], plot_shape = (1,5), figsize=(15,3))
+                # save_images(img_sample, output_dir = output_dir + "imgs/%s.png" % (k), \
+                #             diffmap = diffmaps,image_ax = [0,1,2,3,5,6,7,8], diffmap_ax = [4, 9], plot_shape = (2,5), figsize=(15,6))
                 names.append(img["ids"])
             except Exception as e:
                 print (e)
@@ -727,20 +735,25 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
             titles = "Model,CE,lpips,mae,ssim,psnr"
             stats_fi = "{0},{1:.6f},{2:.6f},{3:.6f},{4:.6f}".format(exp, \
                                                 np.mean(pdifs_fim),np.mean(m_fi),np.mean(s_fi),np.mean(p_fi))
-            stats_ro = "{0},{1:.6f},{2:.6f},{3:.6f}".format(exp, \
-                                                np.mean(pdif_roi),np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
+            # stats_ro = "{0},{1:.6f},{2:.6f},{3:.6f}".format(exp, \
+            #                                     np.mean(pdif_roi),np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
+            
+            # stats_fi = "{0},{1:.6f},{2:.6f},{3:.6f},{4:.6f}".format(exp, \
+            #                                     np.mean(pdifs_fim),np.mean(m_fi),np.mean(s_fi),np.mean(p_fi))
+            # stats_ro = "{0},{1:.6f},{2:.6f},{3:.6f}".format(exp, \
+            #                                     np.mean(pdif_roi),np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
             
             dict = {"name_exp" : titles,
-                    args.exp_name + "-avg_fim" : stats_fi,
-                    args.exp_name + "-avg_roi" : stats_ro}
+                    args.exp_name + "-avg_fim" : stats_fi} #,
+                    # args.exp_name + "-avg_roi" : stats_ro}
             w = csv.writer(open(save_file, "a"))
             for key, val in dict.items(): w.writerow([key, val]) #"""
             print ("\n [!] -> Results saved in: {0} \n".format(save_file))
 
             if image_level:
                 #
-                dict = {"names": names, "mae_fi" : m_fi, "mae_roi" : m_ro, "lpips_fi" : pdifs_fim, "lpips_roi" : pdifs_roi,
-                        "ssim_fi" : s_fi, "ssim_roi" : s_ro, "psnr_fi" : p_fi, "psnr_roi" : p_ro}
+                dict = {"names": names, "mae_fi" : m_fi, "lpips_fi" : pdifs_fim, "ssim_fi" : s_fi, "psnr_fi" : p_fi} #, 
+                                        # "mae_roi": m_ro, "lpips_roi": pdifs_roi, "ssim_roi": s_ro, "psnr_roi": p_ro }
                 dict = pd.DataFrame.from_dict(dict)
                 namefile = "im_" + os.path.splitext(save_file)[0][os.path.splitext(save_file)[0].rfind("/")+1:]
                 namefile = os.path.splitext(save_file)[0][:os.path.splitext(save_file)[0].rfind("/")+1] + namefile + ".csv"
