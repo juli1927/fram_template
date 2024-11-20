@@ -410,7 +410,9 @@ def save_images (list_images, output_dir, diffmap = None, image_ax = [0,1,2,4,5,
     axes = axes.ravel()
 
     for i, image in zip(image_ax, list_images):
-        image = np.squeeze(image).transpose(1,2,0) if image.shape[1] > 1 else np.squeeze(image)
+        # image = np.squeeze(image).transpose(1,2,0) if len(image.shape) >= 3 else np.squeeze(image)
+        image = np.squeeze(image)
+        image = image.transpose(1,2,0) if len(image.shape) == 3 and (image.shape[0] <= 3) else image
         axes[i].imshow(np.squeeze(image), cmap = "gray") #, vmin=0, vmax=1
         axes[i].set_axis_off(); #print(image.min(), image.max())
     
@@ -644,8 +646,8 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
         #
         """Saves a generated sample from the validation set"""
         Tensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
-        ce_m = torch.nn.L1Loss()
-        difference = True
+        # ce_m = torch.nn.L1Loss()
+        # difference = True
         
         scaler = min_max_scaling(out_range = [-1,1])
         lpips_ = lpips.LPIPS(net=args.lpips_net)
@@ -687,21 +689,22 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
                 ###-----------
                 ### Extraccion de los ROI
                 ###-----------
-                # roi_fake = extract_roi_from_points(fake_out.cpu().detach().numpy(), img["pt_roi_out"] )
+                coords_ = extract_coords_roi(args, real_lab)
+                roi_i = extract_roi_from_image(args, real_in, coords_)
+                roi_r = extract_roi_from_image(args, real_out, coords_)
+                roi_f = extract_roi_from_image(args, fake_out, coords_)
+                roi_l = extract_roi_from_image(args, real_lab, coords_)
                 
-                # real_ca = real_out - real_in #real_in - real_out #
-                # fake_ca = fake_out - real_in #real_in - fake_out #
-                # ce_fim = ce_m(fake_ca, real_ca); ces_fim.append(ce_fim.item())
-                
-                # roi_ca = roi_out - roi_in
-                # fro_ca = torch.tensor(roi_fake, device = roi_in.device) - roi_in
-                # ce_roi = ce_m(fro_ca, roi_ca); ces_fim.append(ce_roi.item())
+                roi_i = cv2.resize(roi_i, (64,64))
+                roi_r = cv2.resize(roi_r, (64,64))
+                roi_f = cv2.resize(roi_f, (64,64))
+                roi_l = cv2.resize(roi_l, (64,64))
                  
                 diffmap = abs(real_out.data - fake_out.data) 
-                # diffroi = abs(roi_out.data.cpu().numpy() - roi_fake[np.newaxis,:,:,:]) 
-                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), real_lab.data.cpu().numpy()] #, \
-                              #roi_in.data.cpu().numpy(), roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:]]
-                diffmaps = [diffmap.cpu().numpy()] #, diffroi]
+                diffroi = abs(roi_r - roi_f) 
+                img_sample = [real_in.data.cpu().numpy(), real_out.data.cpu().numpy(), fake_out.data.cpu().numpy(), real_lab.data.cpu().numpy(), \
+                              roi_i, roi_r, roi_f, roi_l]
+                diffmaps = [diffmap.cpu().numpy(), diffroi]
                 
                 ##---- Metrics -----##
                 ##--- FIM ---##
@@ -709,20 +712,24 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
                 m_fi.append(m_), s_fi.append(s_), p_fi.append(p_)
 
                 ##--- ROI ---##
-                # m_, s_, p_ = pixel_metrics(roi_out.data.cpu().numpy(), roi_fake[np.newaxis,:,:,:])
-                # m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
+                m_, s_, p_ = pixel_metrics(roi_r, roi_f)
+                m_ro.append(m_), s_ro.append(s_), p_ro.append(p_)
 
                 if image_level:
-                    # roi_fake = torch.from_numpy(roi_fake[np.newaxis,:,:,:])
-                    # if args.cuda: roi_fake = roi_fake.cuda()
+                    roi_r = torch.from_numpy(roi_r[np.newaxis,np.newaxis,:,:])
+                    roi_f = torch.from_numpy(roi_f[np.newaxis,np.newaxis,:,:])
+                    # roi_r = transforms.Resize(size=(64,64))(roi_r)
+                    # roi_f = transforms.Resize(size=(64,64))(roi_f)
+                    if args.cuda: 
+                        roi_r = roi_r.cuda(); roi_f = roi_f.cuda()
 
                     pdif_fim = image_lpips(real_out, fake_out, scaler = scaler, lpips_ = lpips_)
-                    # pdif_roi = image_lpips(roi_out, roi_fake, scaler = scaler, lpips_ = lpips_)
+                    pdif_roi = image_lpips(roi_r, roi_f, scaler = scaler, lpips_ = lpips_)
                     pdifs_fim.append(pdif_fim)
-                    # pdifs_roi.append(pdif_roi)
+                    pdifs_roi.append(pdif_roi)
                 
                 save_images(img_sample, output_dir = output_dir + "imgs/%s.png" % (k), \
-                            diffmap = diffmaps,image_ax = [0,1,2,3], diffmap_ax = [4], plot_shape = (1,5), figsize=(15,3))
+                            diffmap = diffmaps,image_ax = [0,1,2,3,5,6,7,8], diffmap_ax = [4,9], plot_shape = (2,5), figsize=(15,6))
                 # save_images(img_sample, output_dir = output_dir + "imgs/%s.png" % (k), \
                 #             diffmap = diffmaps,image_ax = [0,1,2,3,5,6,7,8], diffmap_ax = [4, 9], plot_shape = (2,5), figsize=(15,6))
                 names.append(img["ids"])
@@ -735,8 +742,8 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
             titles = "Model,CE,lpips,mae,ssim,psnr"
             stats_fi = "{0},{1:.6f},{2:.6f},{3:.6f},{4:.6f}".format(exp, \
                                                 np.mean(pdifs_fim),np.mean(m_fi),np.mean(s_fi),np.mean(p_fi))
-            # stats_ro = "{0},{1:.6f},{2:.6f},{3:.6f}".format(exp, \
-            #                                     np.mean(pdif_roi),np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
+            stats_ro = "{0},{1:.6f},{2:.6f},{3:.6f}".format(exp, \
+                                                np.mean(pdif_roi),np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
             
             # stats_fi = "{0},{1:.6f},{2:.6f},{3:.6f},{4:.6f}".format(exp, \
             #                                     np.mean(pdifs_fim),np.mean(m_fi),np.mean(s_fi),np.mean(p_fi))
@@ -744,20 +751,53 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
             #                                     np.mean(pdif_roi),np.mean(m_ro),np.mean(s_ro),np.mean(p_ro))
             
             dict = {"name_exp" : titles,
-                    args.exp_name + "-avg_fim" : stats_fi} #,
-                    # args.exp_name + "-avg_roi" : stats_ro}
+                    args.exp_name + "-avg_fim" : stats_fi,
+                    args.exp_name + "-avg_roi" : stats_ro}
             w = csv.writer(open(save_file, "a"))
             for key, val in dict.items(): w.writerow([key, val]) #"""
             print ("\n [!] -> Results saved in: {0} \n".format(save_file))
 
             if image_level:
                 #
-                dict = {"names": names, "mae_fi" : m_fi, "lpips_fi" : pdifs_fim, "ssim_fi" : s_fi, "psnr_fi" : p_fi} #, 
-                                        # "mae_roi": m_ro, "lpips_roi": pdifs_roi, "ssim_roi": s_ro, "psnr_roi": p_ro }
+                dict = {"names": names, "mae_fi" : m_fi, "lpips_fi" : pdifs_fim, "ssim_fi" : s_fi, "psnr_fi" : p_fi, 
+                                        "mae_roi": m_ro, "lpips_roi": pdifs_roi, "ssim_roi": s_ro, "psnr_roi": p_ro }
                 dict = pd.DataFrame.from_dict(dict)
                 namefile = "im_" + os.path.splitext(save_file)[0][os.path.splitext(save_file)[0].rfind("/")+1:]
                 namefile = os.path.splitext(save_file)[0][:os.path.splitext(save_file)[0].rfind("/")+1] + namefile + ".csv"
                 dict.to_csv (namefile, index=False)
+
+
+
+def extract_coords_roi(args, image):
+    #
+    Tensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
+    if isinstance(image, Tensor):
+        image = image.detach().cpu().numpy().squeeze()
+    
+    white_pixels = np.argwhere(image > 0)
+    if white_pixels.size > 0:
+        # Determinar las coordenadas mínimas y máximas
+        min_y, min_x = white_pixels.min(axis=0)
+        max_y, max_x = white_pixels.max(axis=0)
+    else:
+        min_y, min_x = image.shape[0]/2, image.shape[0]/2
+        max_y, max_x = image.shape[1]/2, image.shape[1]/2
+    
+    # cropped_image_array = image[min_y:max_y + 1, min_x:max_x + 1]
+    # cropped_image = Image.fromarray(cropped_image_array)
+    return min_x, max_x, min_y, max_y
+
+
+def extract_roi_from_image(args, image, coords):
+    #
+    Tensor = torch.cuda.FloatTensor if args.cuda else torch.FloatTensor
+    if isinstance(image, Tensor):
+        image = image.detach().cpu().numpy().squeeze()
+    
+    cropped_image_array = image[coords[2]:coords[3] + 1, coords[0]:coords[1] + 1]
+    # cropped_image_array = image[min_y:max_y + 1, min_x:max_x + 1]
+    # cropped_image = Image.fromarray(cropped_image_array)
+    return cropped_image_array
 
 
 ##

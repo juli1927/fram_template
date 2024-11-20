@@ -16,7 +16,7 @@ from colorama import Fore
 from utils import *
 from dataloader import *
 
-from Models.Pix2Pix import *
+from Models.Pix2Pix_base import GeneratorUNet as GeneratorUNetBase
 from Models.Pix2Pix import GeneratorUNet
 from Models.Mask_Pix2Pix import Generator_Mask_UNet
 from Models.Mask_R_Pix2Pix import Generator_Mask_R_UNet
@@ -31,11 +31,11 @@ def run_validation(args):
 
     if args.model == "UNet":
         # Initialize generator
-        generator = GeneratorUNet(n_channels = args.channels)
+        generator = GeneratorUNetBase(n_channels = args.channels)
     
     elif args.model == "Pix2Pix": # GAN
         # Initialize generator 
-        generator = GeneratorUNet(n_channels = args.channels)
+        generator = GeneratorUNetBase(n_channels = args.channels)
 
     elif args.model == "Mask_UNet": 
         # Initialize generator
@@ -247,8 +247,8 @@ if __name__ == "__main__":
             --normalization min_max \
             --num_workers 8 \
             --sample_size 10 \
-            --exp_name UNetR-exp_4/ \
-            --model Mask_UNet --pixel_metrics" #pixel_metrics time_intensities 
+            --exp_name UNet_base/ \
+            --model UNet --pixel_metrics" #pixel_metrics time_intensities 
     
     for arg in args.split(" "): 
         if arg: param(arg)
