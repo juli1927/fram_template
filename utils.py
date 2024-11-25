@@ -669,6 +669,7 @@ def generate_images_with_stats(args, dataloader, generator, epoch, shuffled = Tr
         ces_fim = []
         pdifs_fim, pdifs_roi = [], []
         names = []
+        generator.eval() 
 
         for k, l in tqdm(enumerate(lucky), ncols=100, total=len(lucky)):
             

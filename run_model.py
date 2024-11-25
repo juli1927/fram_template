@@ -88,17 +88,17 @@ if __name__ == "__main__":
     
     args = "--no_notifications \
             --gpus 0 \
-            --exp_name Prue_UNet \
+            --exp_name Prue_P2X \
             --dataset_name BreaDM \
             --input_sequence VIBRANT_IMG \
             --output_sequence VIBRANT+C3_IMG \
             --output_labels VIBRANT+C3_LABEL \
-            --data_path /home/estudiante1/MRI_pj/fram_template/BreaDM/ \
+            --data_path BreaDM/ \
             --image_size 256 --channels 1 \
             --batch_size 5 \
             --normalization min_max \
             --num_workers 4 \
-            --model Mask_R_UNet \
+            --model Mask_R_Pix2Pix_bloque \
             --num_epochs 100"
 
     for arg in args.split(" "):

@@ -247,8 +247,8 @@ if __name__ == "__main__":
             --normalization min_max \
             --num_workers 8 \
             --sample_size 10 \
-            --exp_name UNet_base/ \
-            --model UNet --pixel_metrics" #pixel_metrics time_intensities 
+            --exp_name Pix_Mask_R_Exp_B/ \
+            --model Mask_R_Pix2Pix_bloque --pixel_metrics" #pixel_metrics time_intensities 
     
     for arg in args.split(" "): 
         if arg: param(arg)
